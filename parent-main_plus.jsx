@@ -61,7 +61,7 @@
         var layer = layers[i];
         var shouldParent = false;
 
-        if (layer.parent == null || !selectedLookup[layer.parent.index]) {
+        if (layer.parent == null || layer.parent === master || !selectedLookup[layer.parent.index]) {
             shouldParent = true;
         }
 
