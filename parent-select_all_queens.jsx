@@ -1,4 +1,6 @@
-// Select immediate parents of all selected layers (no duplicates)
+// Select parents of all selected layers (no duplicates)
+// Default: climbs to the top-most root parent
+// Alt held: selects only the immediate (one level up) parent
 (function selectParentsMultiple() {
 
     var comp = app.project.activeItem;
@@ -7,15 +9,28 @@
     var selectedLayers = comp.selectedLayers;
     if (selectedLayers.length < 1) return; // need at least one layer
 
-    app.beginUndoGroup("Select Immediate Parents");
+    var altPressed = ScriptUI.environment.keyboardState.altKey;
+
+    app.beginUndoGroup(altPressed ? "Select Immediate Parents" : "Select Top Parents");
 
     var parents = []; // store unique parent layers
 
-    // Collect immediate parents
     for (var i = 0; i < selectedLayers.length; i++) {
         var layer = selectedLayers[i];
-        if (layer.parent != null && parents.indexOf(layer.parent) === -1) {
-            parents.push(layer.parent);
+
+        if (altPressed) {
+            // Immediate parent only
+            if (layer.parent != null && parents.indexOf(layer.parent) === -1) {
+                parents.push(layer.parent);
+            }
+        } else {
+            // Climb up to the root parent
+            while (layer.parent != null) {
+                layer = layer.parent;
+            }
+            if (parents.indexOf(layer) === -1) {
+                parents.push(layer);
+            }
         }
     }
 
