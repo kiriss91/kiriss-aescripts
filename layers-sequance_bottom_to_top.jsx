@@ -8,19 +8,31 @@
     var layers = comp.selectedLayers;
     if (layers.length === 0) { alert("Please select at least one layer."); return; }
 
-    layers.sort(function (a, b) {
-        var ay = a.position.value[1];
-        var by = b.position.value[1];
-        if (ay !== by) return by - ay; // bottom (larger Y) first
-        return a.index - b.index;
+    // World-space Y (accounts for parenting -- a layer's own .position
+    // is relative to its parent, not the comp, so we can't sort on it
+    // directly when layers are parented).
+    function worldY(layer) {
+        var anchor = layer.anchorPoint.value;
+        var world = layer.threeDLayer ? layer.toWorld(anchor, comp.time) : layer.toComp(anchor, comp.time);
+        return world[1];
+    }
+
+    var order = [];
+    for (var i = 0; i < layers.length; i++) {
+        order.push({ layer: layers[i], y: worldY(layers[i]) });
+    }
+
+    order.sort(function (a, b) {
+        if (a.y !== b.y) return b.y - a.y; // bottom (larger Y) first
+        return a.layer.index - b.layer.index;
     });
 
     app.beginUndoGroup("Sequence Layers Bottom to Top");
 
-    var cursor = layers[0].inPoint;
+    var cursor = order[0].layer.inPoint;
 
-    for (var i = 0; i < layers.length; i++) {
-        var l = layers[i];
+    for (var i = 0; i < order.length; i++) {
+        var l = order[i].layer;
         var shift = cursor - l.inPoint;
         l.startTime += shift;
         cursor = l.outPoint;
