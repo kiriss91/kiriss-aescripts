@@ -144,12 +144,29 @@ if (comp && comp instanceof CompItem) {
             nullLayer.inPoint = minIn;
             nullLayer.outPoint = maxOut;
 
-            // ---- Parent handling ----
-            var commonParent = selectedLayers[0].parent;
+            // ---- Parent handling (preserve links already inside the selection) ----
+            var selectedLookup = {};
+            for (var i = 0; i < selectedLayers.length; i++) {
+                selectedLookup[selectedLayers[i].index] = true;
+            }
+
+            // Roots: selected layers whose current parent is NOT another
+            // selected layer (or has no parent at all). Only these get
+            // relinked to the new null -- a layer already parented to
+            // another selected layer keeps that relationship untouched.
+            var roots = [];
+            for (var i = 0; i < selectedLayers.length; i++) {
+                var layer = selectedLayers[i];
+                if (layer.parent == null || !selectedLookup[layer.parent.index]) {
+                    roots.push(layer);
+                }
+            }
+
+            var commonParent = roots.length > 0 ? roots[0].parent : null;
             var allSameParent = true;
 
-            for (var i = 1; i < selectedLayers.length; i++) {
-                if (selectedLayers[i].parent !== commonParent) {
+            for (var i = 1; i < roots.length; i++) {
+                if (roots[i].parent !== commonParent) {
                     allSameParent = false;
                     break;
                 }
@@ -159,8 +176,8 @@ if (comp && comp instanceof CompItem) {
                 nullLayer.parent = commonParent;
             }
 
-            for (var i = 0; i < selectedLayers.length; i++) {
-                selectedLayers[i].parent = nullLayer;
+            for (var i = 0; i < roots.length; i++) {
+                roots[i].parent = nullLayer;
             }
 
             // Move null above topmost selected layer
