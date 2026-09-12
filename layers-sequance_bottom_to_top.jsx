@@ -1,7 +1,8 @@
 // Sequence selected layers in time, one after the other, following
 // the layer stacking order in the Timeline: bottommost layer first,
-// topmost last. Each layer starts exactly where the previous one's
-// out point ends, keeping its own duration.
+// topmost last. The first layer's in point moves to the current
+// time indicator, and each following layer starts exactly where the
+// previous one's out point ends, keeping its own duration.
 (function () {
 
     var comp = app.project.activeItem;
@@ -14,7 +15,7 @@
 
     app.beginUndoGroup("Sequence Layers Bottom to Top");
 
-    var cursor = layers[0].inPoint;
+    var cursor = comp.time;
 
     for (var i = 0; i < layers.length; i++) {
         var l = layers[i];
