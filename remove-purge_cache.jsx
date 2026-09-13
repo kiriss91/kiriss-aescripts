@@ -1,0 +1,1 @@
+app.purge(PurgeTarget.ALL_CACHES);
