@@ -1,0 +1,24 @@
+External / third-party dependencies
+====================================
+
+This repo is mostly self-contained scripts, but a couple of files
+either depend on, or were deliberately left out because of, outside
+third-party tools. Noting them here so it's clear what's going on.
+
+1. select-rd_CompSetter.jsx (NOT included in this repo)
+   - "rd: Composition Setter" v3.3 by Jeffrey R. Almasol (redefinery),
+     www.redefinery.com
+   - Copyright (c) 2006-2025 redefinery. All rights reserved.
+   - Kept locally in the scripts folder for personal use, but excluded
+     from this repo (see .gitignore) since it's third-party code with
+     no open-source license attached.
+   - If you need it, get your own copy from redefinery.com.
+
+2. select-runAutoCropHeadless.jsx
+   - This wrapper does not implement cropping itself. It waits for a
+     global executeAutoCrop() function to exist and calls it with a
+     mode (CROP / DURATION / MASK / PREF) based on Shift/Alt
+     modifiers.
+   - That function is provided by a separate third-party "Auto Crop"
+     AE script/plugin, which must be installed and loaded for this
+     script to do anything.
