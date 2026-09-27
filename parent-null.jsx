@@ -5,6 +5,8 @@
 // Multiple layers: If all share the same parent, insert null between them and parent
 // NEW: Nothing selected → creates "Center Null" at exact comp center
 // NEW: Null is trimmed to match layer timing
+// NEW: Ctrl held → the parenting null is placed at the comp's exact
+// center instead of the layer's anchor / the selection's midpoint
 
 app.beginUndoGroup("Create Midpoint / Single-Layer / Center Null + Auto Parent");
 
@@ -13,6 +15,7 @@ var comp = app.project.activeItem;
 if (comp && comp instanceof CompItem) {
 
     var selectedLayers = comp.selectedLayers;
+    var ctrlPressed = ScriptUI.environment.keyboardState.ctrlKey || ScriptUI.environment.keyboardState.metaKey;
 
     if (selectedLayers.length >= 1) {
 
@@ -47,19 +50,27 @@ if (comp && comp instanceof CompItem) {
 
             nullLayer.moveBefore(layer);
 
-            var anchor = layer.transform.anchorPoint.value;
-            var anchorStr = "[" + anchor.join(",") + "]";
-            var expr = "thisComp.layer(" + layer.index + ")." +
-                       (is3D ? "toWorld" : "toComp") +
-                       "(" + anchorStr + ");";
+            if (ctrlPressed) {
 
-            if (!is3D) {
-                expr = "var p = " + expr + "; [p[0], p[1], 0];";
+                var centerPos = is3D ? [comp.width / 2, comp.height / 2, 0] : [comp.width / 2, comp.height / 2];
+                nullLayer.transform.position.setValue(centerPos);
+
+            } else {
+
+                var anchor = layer.transform.anchorPoint.value;
+                var anchorStr = "[" + anchor.join(",") + "]";
+                var expr = "thisComp.layer(" + layer.index + ")." +
+                           (is3D ? "toWorld" : "toComp") +
+                           "(" + anchorStr + ");";
+
+                if (!is3D) {
+                    expr = "var p = " + expr + "; [p[0], p[1], 0];";
+                }
+
+                nullLayer.transform.position.expression = expr;
+                nullLayer.transform.position.setValue(nullLayer.transform.position.value);
+                nullLayer.transform.position.expression = "";
             }
-
-            nullLayer.transform.position.expression = expr;
-            nullLayer.transform.position.setValue(nullLayer.transform.position.value);
-            nullLayer.transform.position.expression = "";
 
             if (originalParent) {
                 nullLayer.parent = originalParent;
@@ -83,62 +94,73 @@ if (comp && comp instanceof CompItem) {
                 maxOut = Math.max(maxOut, selectedLayers[i].outPoint);
             }
 
-            // ---- Calculate midpoint position ----
-            var minPos = [999999999, 999999999, 999999999];
-            var maxPos = [-999999999, -999999999, -999999999];
+            // ---- Calculate midpoint position (skipped when centering) ----
+            var midPos = null;
 
-            var tempNull = comp.layers.addNull();
-            tempNull.name = "Temp Null";
-            tempNull.threeDLayer = true;
+            if (!ctrlPressed) {
 
-            for (var i = 0; i < selectedLayers.length; i++) {
+                var minPos = [999999999, 999999999, 999999999];
+                var maxPos = [-999999999, -999999999, -999999999];
 
-                var layer = selectedLayers[i];
-                var is3D = layer.threeDLayer;
-                var anchor = layer.transform.anchorPoint.value;
-                var anchorStr = "[" + anchor.join(",") + "]";
+                var tempNull = comp.layers.addNull();
+                tempNull.name = "Temp Null";
+                tempNull.threeDLayer = true;
 
-                var expr = "thisComp.layer(" + layer.index + ")." +
-                           (is3D ? "toWorld" : "toComp") +
-                           "(" + anchorStr + ");";
+                for (var i = 0; i < selectedLayers.length; i++) {
 
-                if (!is3D) {
-                    expr = "var p = " + expr + "; [p[0], p[1], 0];";
+                    var layer = selectedLayers[i];
+                    var is3D = layer.threeDLayer;
+                    var anchor = layer.transform.anchorPoint.value;
+                    var anchorStr = "[" + anchor.join(",") + "]";
+
+                    var expr = "thisComp.layer(" + layer.index + ")." +
+                               (is3D ? "toWorld" : "toComp") +
+                               "(" + anchorStr + ");";
+
+                    if (!is3D) {
+                        expr = "var p = " + expr + "; [p[0], p[1], 0];";
+                    }
+
+                    tempNull.transform.position.expression = expr;
+                    var pos = tempNull.transform.position.value;
+
+                    minPos[0] = Math.min(minPos[0], pos[0]);
+                    maxPos[0] = Math.max(maxPos[0], pos[0]);
+                    minPos[1] = Math.min(minPos[1], pos[1]);
+                    maxPos[1] = Math.max(maxPos[1], pos[1]);
+
+                    if (maxDimensions === 3) {
+                        minPos[2] = Math.min(minPos[2], pos[2]);
+                        maxPos[2] = Math.max(maxPos[2], pos[2]);
+                    }
                 }
 
-                tempNull.transform.position.expression = expr;
-                var pos = tempNull.transform.position.value;
+                tempNull.remove();
 
-                minPos[0] = Math.min(minPos[0], pos[0]);
-                maxPos[0] = Math.max(maxPos[0], pos[0]);
-                minPos[1] = Math.min(minPos[1], pos[1]);
-                maxPos[1] = Math.max(maxPos[1], pos[1]);
-
+                midPos = [];
+                midPos[0] = (minPos[0] + maxPos[0]) / 2;
+                midPos[1] = (minPos[1] + maxPos[1]) / 2;
                 if (maxDimensions === 3) {
-                    minPos[2] = Math.min(minPos[2], pos[2]);
-                    maxPos[2] = Math.max(maxPos[2], pos[2]);
+                    midPos[2] = (minPos[2] + maxPos[2]) / 2;
                 }
-            }
-
-            tempNull.remove();
-
-            var midPos = [];
-            midPos[0] = (minPos[0] + maxPos[0]) / 2;
-            midPos[1] = (minPos[1] + maxPos[1]) / 2;
-            if (maxDimensions === 3) {
-                midPos[2] = (minPos[2] + maxPos[2]) / 2;
             }
 
             // ---- Create final null ----
             var nullLayer = comp.layers.addNull();
-            nullLayer.name = "Midpoint Null";
+            nullLayer.name = ctrlPressed ? "Center Null" : "Midpoint Null";
 
             if (maxDimensions === 3) {
                 nullLayer.threeDLayer = true;
             }
 
             nullLayer.label = nullLabel;
-            nullLayer.transform.position.setValue(midPos);
+
+            if (ctrlPressed) {
+                var centerPos = (maxDimensions === 3) ? [comp.width / 2, comp.height / 2, 0] : [comp.width / 2, comp.height / 2];
+                nullLayer.transform.position.setValue(centerPos);
+            } else {
+                nullLayer.transform.position.setValue(midPos);
+            }
 
             // Trim to cover all selected layers
             nullLayer.inPoint = minIn;
