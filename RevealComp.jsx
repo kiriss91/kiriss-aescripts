@@ -6,10 +6,15 @@
 // has, but pointed at Kiriss's Library instead since that's standing in
 // for the Project panel now.
 //
-// What it reveals:
-//   - If a precomp layer is selected in the active comp, its SOURCE comp
-//     (mirrors AE's own "Reveal Composition in Project" layer command).
-//   - Otherwise, the comp that's currently open/active.
+// What it reveals: always the comp that's currently open/active - never
+// a selected layer's source (that's "-- RevealLayerSource.jsx"'s job).
+// This used to fall back to a selected precomp layer's source comp too,
+// mirroring AE's own "Reveal Composition in Project" layer command, but
+// that meant having ANY precomp layer selected silently took over this
+// shortcut and made it behave like RevealLayerSource's - so with a layer
+// selected, Ctrl+Shift+E (this script) and Ctrl+E (RevealLayerSource)
+// did the same thing instead of two different ones. Removed so each
+// shortcut has exactly one, non-overlapping behavior.
 //
 // How it reaches the panel: this script has no direct access to the
 // Kiriss extension's own JS (different ExtendScript/CEP execution
@@ -24,21 +29,9 @@
 // Window > Extensions > Kiriss if nothing happens).
 
 (function revealComp() {
-    function findTargetComp() {
-        var active = app.project.activeItem;
-        if (!(active instanceof CompItem)) return null;
-
-        var sel = active.selectedLayers;
-        for (var i = 0; i < sel.length; i++) {
-            var src = sel[i].source;
-            if (src && src instanceof CompItem) return src;
-        }
-        return active;
-    }
-
-    var comp = findTargetComp();
-    if (!comp) {
-        alert("Open a composition, or select a precomp layer inside one, then run Reveal Comp again.");
+    var comp = app.project.activeItem;
+    if (!(comp instanceof CompItem)) {
+        alert("Open a composition, then run Reveal Comp again.");
         return;
     }
 

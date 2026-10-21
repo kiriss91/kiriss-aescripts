@@ -4,9 +4,9 @@
 // shortcut) to reveal the SOURCE item of the layer(s) selected in the
 // Timeline - AE's own "Reveal Layer Source in Project", pointed at
 // Kiriss's Library dock instead since that's standing in for the
-// Project panel now. Companion to "-- RevealComp.jsx" (which reveals the
-// active comp itself / a selected precomp layer's source); this one
-// works purely off the Timeline selection, no comp-fallback.
+// Project panel now. Companion to "-- RevealComp.jsx" (which always
+// reveals the active comp itself, ignoring selection); this one works
+// purely off the Timeline selection, no comp-fallback.
 //
 // How it reaches the panel: same marker-file hand-off "-- RevealComp.jsx"
 // uses (a CSXSEvent relay was tried first and never reliably reached the
