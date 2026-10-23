@@ -857,7 +857,12 @@
         }
     }
 
-    function pasteAndRelink(statusText, keepOriginalTiming, detectXSuffix) {
+    function pasteAndRelink(
+        statusText,
+        keepOriginalTiming,
+        detectXSuffix,
+        keepLayerOrder
+    ) {
         var cache = getCache();
 
         if (!cache || !cache.layers || cache.layers.length === 0) {
@@ -1050,6 +1055,29 @@
             }
 
             /*
+                Keep layer order (same-comp only), like Ctrl+D:
+                native Paste stacks every pasted layer together as one
+                block. Instead, put each copy directly ABOVE the layer it
+                was copied from, so [A, B, C] becomes [A', A, B', B, C', C].
+
+                Done BEFORE parenting / Layer Control relinking on purpose:
+                those steps write layer INDICES, so the stack has to be in
+                its final order first.
+            */
+            if (sameComp && keepLayerOrder) {
+                for (i = 0; i < pastedLayers.length; i++) {
+                    var srcLayer = cache.layers[i].sourceLayerRef;
+
+                    try {
+                        // Stale ref (original deleted since Copy) throws here.
+                        if (srcLayer && srcLayer.containingComp === targetComp) {
+                            pastedLayers[i].moveBefore(srcLayer);
+                        }
+                    } catch (orderErr) {}
+                }
+            }
+
+            /*
                 Native Paste normally preserves internal parenting.
                 Repair it anyway so the cached source relationship
                 remains authoritative.
@@ -1163,10 +1191,22 @@
         var detectXSuffixCheck = win.add(
             "checkbox",
             undefined,
-            "Detect _X"
+            "Detect _X and increment"
         );
 
         detectXSuffixCheck.value = true;
+
+        var keepOrderCheck = win.add(
+            "checkbox",
+            undefined,
+            "Keep layer order"
+        );
+
+        keepOrderCheck.value = true;
+        keepOrderCheck.helpTip =
+            "Each copy goes directly above its original (like Ctrl+D) " +
+            "instead of all copies stacking together at the top. " +
+            "Same-comp paste only.";
 
         var statusText = win.add(
             "statictext",
@@ -1190,7 +1230,8 @@
                 pasteAndRelink(
                     statusText,
                     keepTimingCheck.value,
-                    detectXSuffixCheck.value
+                    detectXSuffixCheck.value,
+                    keepOrderCheck.value
                 );
             } catch (err) {
                 statusText.text = "Paste failed";
